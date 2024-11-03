@@ -1,0 +1,184 @@
+version: '3'
+services:
+  spark-master:
+    image: bitnami/spark:3.3.1
+    container_name: spark-master
+    hostname: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOSTNAME=spark-master
+      - SPARK_MASTER_PORT=7077
+    ports:
+      - "4040:4040"
+      - "6066:6066"
+      - "7077:7077"
+      - "8080:8080"
+    # command: bin/spark-class org.apache.spark.deploy.master.Master
+    volumes:
+      - ../app:/opt/spark-applications
+    networks:
+      - spark-network
+
+  spark-worker-1:
+    image: bitnami/spark:3.3.1
+    container_name: spark-worker-1
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY = 3g
+      - SPARK_WORKER_CORES = 3
+      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3
+    ports:
+      - "8081:8081"
+    deploy:
+      resources:
+        limits:
+          cpus: "3" # Adjust as needed
+          memory: 3G  # Adjust as needed
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+
+  spark-worker-2:
+    image: bitnami/spark:3.3.1
+    container_name: spark-worker-2
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_MEMORY = 2g
+      - SPARK_WORKER_CORES = 2
+    deploy:
+      resources:
+        limits:
+          cpus: "2" # Adjust as needed
+          memory: 2G  # Adjust as needed
+    depends_on:
+      - spark-master
+    networks:
+      - spark-network
+      
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: zookeeper-server
+    hostname: zookeeper
+    restart: always
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    networks:
+      - spark-network
+
+  kafka1:
+    image: bitnami/kafka:3.5
+    container_name: broker-1
+    hostname: broker-1
+    ports:
+      - "9093:9093"
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9093,INTERNAL://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9093,INTERNAL://:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+    depends_on:
+      - zookeeper
+    networks:
+      - spark-network
+
+  elasticsearch:
+    container_name: es-container
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.16
+    hostname: elasticsearch
+    environment:
+      - xpack.security.enabled=false
+      - discovery.type=single-node
+      - xpack.security.enabled = false
+      - xpack.security.enrollment.enabled = false
+    networks:
+      - spark-network
+    ports:
+      - 9200:9200
+    volumes:
+      - ../elasticsearch-data:/usr/share/elasticsearch/data
+      
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.17.16
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    networks:
+      - spark-network
+    depends_on:
+      - elasticsearch
+    
+  cfgsvr1:
+    container_name: cfgsvr1
+    image: mongo:6.0.12
+    command: mongod --configsvr --replSet cfgrs --port 27017 --dbpath /data/db
+    ports:
+      - 40001:27017
+    volumes:
+      - cfgsvr1:/data/db
+    networks:
+      - spark-network
+
+  shard1svr1: # 11
+    container_name: shard1svr1
+    image: mongo:6.0.12
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    ports:
+      - 50001:27017
+    volumes:
+      - shard1svr1:/data/db
+    networks:
+      - spark-network
+
+  shard1svr2: # 12
+    container_name: shard1svr2
+    image: mongo:6.0.12
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    ports:
+      - 50002:27017
+    volumes:
+      - shard1svr2:/data/db
+    networks:
+      - spark-network
+    
+  shard1svr3: # 13
+    container_name: shard1svr3
+    image: mongo:6.0.12
+    command: mongod --shardsvr --replSet shard1rs --port 27017 --dbpath /data/db
+    ports:
+      - 50003:27017
+    volumes:
+      - shard1svr3:/data/db
+    networks:
+      - spark-network
+
+  router_mongos:
+    container_name: router_mongos
+    image: mongo:6.0.12
+    command: mongos --configdb cfgrs/cfgsvr1:27017 --port 27017 --bind_ip 0.0.0.0
+    ports:
+      - 60000:27017
+    depends_on:
+      - cfgsvr1
+    networks:
+      - spark-network
+
+networks:
+  spark-network:
+    driver: bridge
+
+volumes:
+  shard1svr1: {}
+  shard1svr2: {}
+  shard1svr3: {}
+  cfgsvr1: {}
+
+# 16 containers
