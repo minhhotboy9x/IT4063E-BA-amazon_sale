@@ -25,16 +25,15 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY = 3g
-      - SPARK_WORKER_CORES = 3
-      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3
+      - SPARK_WORKER_MEMORY = 5g
+      - SPARK_WORKER_CORES = 5
     ports:
       - "8081:8081"
     deploy:
       resources:
         limits:
-          cpus: "3" # Adjust as needed
-          memory: 3G  # Adjust as needed
+          cpus: "5" # Adjust as needed
+          memory: 5G  # Adjust as needed
     depends_on:
       - spark-master
     networks:
@@ -46,15 +45,15 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
-      - SPARK_WORKER_MEMORY = 2g
-      - SPARK_WORKER_CORES = 2
+      - SPARK_WORKER_MEMORY = 5g
+      - SPARK_WORKER_CORES = 5
     deploy:
       resources:
         limits:
-          cpus: "2" # Adjust as needed
-          memory: 2G  # Adjust as needed
+          cpus: "3" # Adjust as needed
+          memory: 3G  # Adjust as needed
     depends_on:
-      - spark-master
+      - spark-worker-1
     networks:
       - spark-network
       
@@ -76,12 +75,14 @@ services:
     hostname: broker-1
     ports:
       - "9093:9093"
+      - "9092:9092"
+      - "9094:9094"
     environment:
       - KAFKA_BROKER_ID=1
       - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9093,INTERNAL://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9093,INTERNAL://:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9093,INTERNAL://:9092,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9093,INTERNAL://broker-1:9092,EXTERNAL://localhost:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
     depends_on:
       - zookeeper
