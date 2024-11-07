@@ -32,8 +32,8 @@ scala_version = '2.12'
 spark_version = '3.3.1'
 packages = [
     # "org.mongodb.spark:mongo-spark-connector_2.12:10.3.0",
-    # 'org.apache.kafka:kafka-clients:3.5.0',
-    # "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1"
+    'org.apache.kafka:kafka-clients:3.5.0',
+    "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1"
 ]
 
 
@@ -53,7 +53,7 @@ spark.sparkContext.setLogLevel("ERROR")
 
 
 cursor = collection.find(batch_size=8) 
-producer = KafkaProducer(bootstrap_servers=KAFKA_BROKER_PRODUCER)
+# producer = KafkaProducer(bootstrap_servers=KAFKA_BROKER_PRODUCER)
 print("Connected to Kafka")
 for document in cursor:
     if not document:
@@ -62,14 +62,19 @@ for document in cursor:
     # df.show()
     pprint(document)
     df_json = df.selectExpr("CAST(review_id_indexed AS STRING)", "to_json(struct(*)) AS value")
-    for row in df_json.collect():
-        producer.send(
-            topic=AMAZON_TOPIC,
-            key=str(row['review_id_indexed']).encode('utf-8'),
-            value=row['value'].encode('utf-8')
-        )
-        producer.flush()
-    time.sleep(1)
+    query = df_json.write \
+            .format("kafka") \
+            .option("kafka.bootstrap.servers", KAFKA_BROKER_PRODUCER) \
+            .option("topic", AMAZON_TOPIC) \
+            .save()
+    # for row in df_json.collect():
+    #     producer.send(
+    #         topic=AMAZON_TOPIC,
+    #         key=str(row['review_id_indexed']).encode('utf-8'),
+    #         value=row['value'].encode('utf-8')
+    #     )
+    #     producer.flush()
+    time.sleep(2)
     del df
 
 client.close()

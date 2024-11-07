@@ -13,7 +13,6 @@ services:
       - "6066:6066"
       - "7077:7077"
       - "8080:8080"
-    # command: bin/spark-class org.apache.spark.deploy.master.Master
     volumes:
       - ../app:/opt/spark-applications
     networks:

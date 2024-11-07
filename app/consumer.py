@@ -22,8 +22,8 @@ ES_RESOURCE = "amazon"
 scala_version = '2.12'
 spark_version = '3.3.1'
 packages = [
-    'org.apache.kafka:kafka-clients:3.5.0',
-    "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1",
+    # 'org.apache.kafka:kafka-clients:3.5.0',
+    # "org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1",
     "org.elasticsearch:elasticsearch-spark-30_2.12:7.17.16"
 ]
 
@@ -47,6 +47,7 @@ def get_kafka_data():
         bootstrap_servers=KAFKA_BROKER_CONSUMER,
         auto_offset_reset='latest'
     )
+    print("Connected to Kafka", consumer.bootstrap_connected())
     for message in consumer:
         if message.value:
             yield json.loads(message.value.decode('utf-8'))
@@ -70,6 +71,7 @@ def stream_data():
     for message in get_kafka_data():
         df = spark.createDataFrame([message], schema=AMAZON_SCHEMA)
         write_to_elasticsearch(df, 0)
+
 stream_data()
 
 
