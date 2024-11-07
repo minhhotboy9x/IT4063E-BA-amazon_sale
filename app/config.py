@@ -1,5 +1,6 @@
 # MASTER = 'local[*]'
-ES_NODES = 'localhost:9200'
+LOCAL_HOST = '192.168.137.1'
+ES_NODES = '192.168.137.1:9200'
 KAFKA_BROKER_CONSUMER = "localhost:9093" # submit to spark local
 KAFKA_BROKER_PRODUCER = "localhost:9093" # submit to spark local
 CONNECTION_STRING = 'mongodb://localhost:60000'

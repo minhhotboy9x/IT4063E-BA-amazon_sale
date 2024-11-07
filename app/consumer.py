@@ -5,7 +5,7 @@ import findspark
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
 from schemas import AMAZON_SCHEMA
-from config import CONNECTION_STRING, MASTER, ES_NODES, AMAZON_TOPIC, KAFKA_BROKER_CONSUMER
+from config import CONNECTION_STRING, MASTER, ES_NODES, AMAZON_TOPIC, KAFKA_BROKER_CONSUMER, LOCAL_HOST
 from kafka import KafkaConsumer
 import json
 
@@ -32,7 +32,7 @@ spark = SparkSession.builder \
     .master(MASTER) \
     .config("spark.jars.packages", ",".join(packages)) \
     .config("spark.mongodb.connection.uri", CONNECTION_STRING) \
-    .config("spark.driver.host","192.168.137.1") \
+    .config("spark.driver.host", LOCAL_HOST) \
     .config("spark.driver.bindAddress", "0.0.0.0") \
     .config("spark.local.dir", "spark_temp") \
     .config("spark.cores.max", "2") \
@@ -40,55 +40,54 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 
-# def get_kafka_data():
-#     """Generator to get Kafka messages."""
-#     consumer = KafkaConsumer(
-#         'amazon',
-#         bootstrap_servers=KAFKA_BROKER_CONSUMER,
-#         auto_offset_reset='latest'
-#     )
-#     for message in consumer:
-#         if message.value:
-#             yield json.loads(message.value.decode('utf-8'))
+def get_kafka_data():
+    """Generator to get Kafka messages."""
+    consumer = KafkaConsumer(
+        'amazon',
+        bootstrap_servers=KAFKA_BROKER_CONSUMER,
+        auto_offset_reset='latest'
+    )
+    for message in consumer:
+        if message.value:
+            yield json.loads(message.value.decode('utf-8'))
 
 def write_to_elasticsearch(df, id):
     """Process and write data to Elasticsearch."""
-    df.show()
-    # df.write \
-    #     .format("org.elasticsearch.spark.sql") \
-    #     .option("es.nodes", "localhost") \
-    #     .option("es.resource", "amazon") \
-    #     .option("es.mapping.id", "review_id_indexed") \
-    #     .option("es.write.operation", "upsert") \
-    #     .mode("append") \
-    #     .save()
+    df.select('review_id_indexed', 'product_id_indexed', 
+              'user_id_indexed', 'rating').show()
+    df.write \
+        .format("es") \
+        .option("es.nodes", ES_NODES) \
+        .option("es.resource", ES_RESOURCE) \
+        .option("es.nodes.wan.only", "true") \
+        .option("es.mapping.id", "review_id_indexed") \
+        .option("es.write.operation", "upsert") \
+        .save()
 
-# Use foreachBatch to manually handle stream data
-# def stream_data():
-#     print("Streaming data from Kafka to Elasticsearch...")
-#     for message in get_kafka_data():
-#         df = spark.createDataFrame([message], schema=AMAZON_SCHEMA)
-#         write_to_elasticsearch(df)
-#         del df
-# stream_data()
+def stream_data():
+    print("Streaming data from Kafka to Elasticsearch...")
+    for message in get_kafka_data():
+        df = spark.createDataFrame([message], schema=AMAZON_SCHEMA)
+        write_to_elasticsearch(df, 0)
+stream_data()
 
 
-df = spark \
-    .readStream \
-    .format("kafka") \
-    .option("kafka.bootstrap.servers", KAFKA_BROKER_CONSUMER) \
-    .option("subscribe", AMAZON_TOPIC) \
-    .option("startingOffsets", "latest") \
-    .load()
+# df = spark \
+#     .readStream \
+#     .format("kafka") \
+#     .option("kafka.bootstrap.servers", KAFKA_BROKER_CONSUMER) \
+#     .option("subscribe", AMAZON_TOPIC) \
+#     .option("startingOffsets", "latest") \
+#     .load()
 
-df = df.selectExpr("CAST(value AS STRING)") \
-                .select(from_json("value", AMAZON_SCHEMA).alias('amazon'))
-df = df.select('amazon.*')
-df = df.withColumnRenamed('id', 'review_id_indexed')
+# df = df.selectExpr("CAST(value AS STRING)") \
+#                 .select(from_json("value", AMAZON_SCHEMA).alias('amazon'))
+# df = df.select('amazon.*')
+# df = df.withColumnRenamed('id', 'review_id_indexed')
 
-query = df.writeStream \
-    .outputMode("append") \
-    .foreachBatch(write_to_elasticsearch) \
-    .start()
+# query = df.writeStream \
+#     .outputMode("append") \
+#     .foreachBatch(write_to_elasticsearch) \
+#     .start()
 
-query.awaitTermination()
+# query.awaitTermination()

@@ -8,7 +8,7 @@ from pyspark.sql.functions import col
 from pyspark.sql import functions as F
 from pyspark.ml import Pipeline
 from schemas import AMAZON_SCHEMA
-from config import CONNECTION_STRING, MASTER, AMAZON_TOPIC, KAFKA_BROKER_PRODUCER
+from config import CONNECTION_STRING, MASTER, AMAZON_TOPIC, KAFKA_BROKER_PRODUCER, LOCAL_HOST
 from pymongo import MongoClient
 from kafka import KafkaProducer
 from pprint import pprint
@@ -42,7 +42,7 @@ spark = SparkSession.builder \
     .master(MASTER) \
     .config("spark.jars.packages", ",".join(packages)) \
     .config("spark.mongodb.connection.uri", CONNECTION_STRING) \
-    .config("spark.driver.host","192.168.137.1") \
+    .config("spark.driver.host", LOCAL_HOST) \
     .config("spark.driver.bindAddress", "0.0.0.0") \
     .config("spark.local.dir", "spark_temp") \
     .config("spark.cores.max", "2") \

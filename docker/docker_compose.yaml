@@ -84,6 +84,7 @@ services:
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9093,INTERNAL://broker-1:9092,EXTERNAL://localhost:9094
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_LISTENER_SECURITY_PROTOCOL=PLAINTEXT
     depends_on:
       - zookeeper
     networks:
@@ -181,5 +182,3 @@ volumes:
   shard1svr2: {}
   shard1svr3: {}
   cfgsvr1: {}
-
-# 16 containers
