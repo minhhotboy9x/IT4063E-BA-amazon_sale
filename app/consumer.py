@@ -62,6 +62,7 @@ def write_to_elasticsearch(df, id):
         .option("es.nodes.wan.only", "true") \
         .option("es.mapping.id", "review_id_indexed") \
         .option("es.write.operation", "upsert") \
+        .mode("append") \
         .save()
 
 def stream_data():
