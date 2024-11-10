@@ -4,9 +4,10 @@ import pyspark
 import findspark
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, from_json
-from schemas import AMAZON_SCHEMA
+from schemas import AMAZON_SCHEMA, PREDICTED_AMAZON_SCHEMA
 from config import CONNECTION_STRING, MASTER, ES_NODES, AMAZON_TOPIC, KAFKA_BROKER_CONSUMER, LOCAL_HOST
 from kafka import KafkaConsumer
+import joblib
 import json
 
 print(findspark.init())
@@ -39,6 +40,9 @@ spark = SparkSession.builder \
     .config("spark.executor.memory", "2g") \
     .getOrCreate()
 
+spark.sparkContext.setLogLevel("ERROR")
+
+model = joblib.load('model/rf_optimal_price_model.pkl')
 
 def get_kafka_data():
     """Generator to get Kafka messages."""
@@ -50,7 +54,27 @@ def get_kafka_data():
     print("Connected to Kafka", consumer.bootstrap_connected())
     for message in consumer:
         if message.value:
-            yield json.loads(message.value.decode('utf-8'))
+            data = json.loads(message.value.decode('utf-8'))
+            
+            # Chuẩn bị dữ liệu từ các trường cần thiết để đưa vào model
+            features = [
+                data.get('actual_price', 0), 
+                data.get('rating', 0), 
+                data.get('rating_count', 0), 
+                data.get('discount_percentage', 0)
+            ]
+            
+            # Chuyển đổi features thành định dạng 2D array cho mô hình
+            input_data = [features]
+            
+            # Dự đoán dựa trên model
+            prediction = model.predict(input_data)
+            
+            # Thêm kết quả dự đoán vào dữ liệu
+            data['optimized_price'] = float(prediction[0])  # Giả sử prediction là một số hoặc giá trị đơn lẻ
+            
+            # Yield lại thông điệp cùng với dự đoán
+            yield data
 
 def write_to_elasticsearch(df, id):
     """Process and write data to Elasticsearch."""
@@ -69,7 +93,7 @@ def write_to_elasticsearch(df, id):
 def stream_data():
     print("Streaming data from Kafka to Elasticsearch...")
     for message in get_kafka_data():
-        df = spark.createDataFrame([message], schema=AMAZON_SCHEMA)
+        df = spark.createDataFrame([message], schema=PREDICTED_AMAZON_SCHEMA)
         write_to_elasticsearch(df, 0)
 
 stream_data()

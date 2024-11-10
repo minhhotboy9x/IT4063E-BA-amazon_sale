@@ -37,3 +37,23 @@ RAW_AMAZON_SCHEMA = StructType([
     StructField("review_id", StringType(), True),
     StructField("category", StringType(), True)
 ])
+
+PREDICTED_AMAZON_SCHEMA = StructType([
+    StructField("product_name", StringType(), True),
+    StructField("discounted_price", FloatType(), True),
+    StructField("actual_price", FloatType(), True),
+    StructField("discount_percentage", FloatType(), True),
+    StructField("rating", FloatType(), True),
+    StructField("rating_count", IntegerType(), True),
+    StructField("about_product", StringType(), True),
+    StructField("user_name", StringType(), True),
+    StructField("review_title", StringType(), True),
+    StructField("review_content", StringType(), True),
+    StructField("img_link", StringType(), True),
+    StructField("product_link", StringType(), True),
+    StructField("product_id_indexed", IntegerType(), True),
+    StructField("user_id_indexed", IntegerType(), True),
+    StructField("review_id_indexed", IntegerType(), True),
+    StructField("category_list", ArrayType(StringType(), True)),
+    StructField("optimized_price", FloatType(), True)
+])
