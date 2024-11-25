@@ -54,3 +54,25 @@ Create sharding collection
 > db.Amazon.createIndex({_id: 'hashed'})
 > sh.shardCollection("IT4063E.Amazon", { _id: 'hashed' })
 ```
+
+### Run application
+Move to app
+```
+> cd app
+```
+
+Insert `amazon.csv` into MongoDB
+```
+> python insert_mongodb.py
+```
+
+Run producer and consumer to start streaming (this is the simulated streaming since the hurdle between the network of docker containers and network of window local machine makes Spark streaming fail to connect to Kafka when submitting jobs to the Spark cluster)
+```
+> python producer.py
+```
+```
+> python consumer.py
+```
+
+Access `localhost:5601` and create diagram on Kibana
+
